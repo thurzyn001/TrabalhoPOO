@@ -385,6 +385,64 @@ public final class CasosDeTesteRunner {
                     verificarInvariantes(service);
                 });
 
+        // CT14
+        executarCaso("CT14", "Bloqueio de remoção com matrículas ativas",
+                "Bloqueio de remoção com matrículas ativas",
+                () -> {
+                    registrar("Entrada", "Tentar remover Fernanda Costa (2024006) e disciplina WEB501");
+                    registrar("Esperado", "MatriculaException: \"O aluno Fernanda Costa não pode ser removido pois possui matrículas ativas.\" e \"A disciplina WEB501 não pode ser removida pois possui matrículas ativas.\"; cadastros permanecem inalterados; invariantes I1-I4 OK");
+
+                    // 1. Tentar remover aluno com matrícula ativa
+                    MatriculaException exAluno = esperarExcecao(() -> service.removerAluno("2024006"));
+                    verificar(exAluno.getMessage().equals("O aluno Fernanda Costa não pode ser removido pois possui matrículas ativas."),
+                            "Mensagem inesperada ao remover aluno: " + exAluno.getMessage());
+
+                    // 2. Tentar remover disciplina com matrícula ativa
+                    MatriculaException exDisc = esperarExcecao(() -> service.removerDisciplina("WEB501"));
+                    verificar(exDisc.getMessage().equals("A disciplina WEB501 não pode ser removida pois possui matrículas ativas."),
+                            "Mensagem inesperada ao remover disciplina: " + exDisc.getMessage());
+
+                    verificar(service.listarAlunos().size() == 6, "Total de alunos deve permanecer 6");
+                    verificar(service.listarDisciplinas().size() == 5, "Total de disciplinas deve permanecer 5");
+
+                    registrar("Obtido", "Bloqueio de remoção validado com mensagens padronizadas; entidades preservadas");
+                    registrar("Estado", "invariantes I1-I4 OK");
+                    verificarInvariantes(service);
+                });
+
+        // CT15
+        executarCaso("CT15", "Remoção válida sem matrículas ativas e persistência",
+                "Remoção válida sem matrículas ativas e persistência",
+                () -> {
+                    registrar("Entrada", "Cancelar matrícula de Fernanda em WEB501, remover Fernanda Costa e disciplina WEB501, depois recarregar novo repositório + service no mesmo diretório temporário");
+                    registrar("Esperado", "Fernanda e WEB501 removidos com sucesso; expurgo de matrículas do histórico; após recarga dos 3 CSVs: Fernanda não está em listarAlunos(), WEB501 não está em listarDisciplinas(), listarMatriculas() sem referências órfãs; total de matrículas volta a 12; invariantes I1-I4 OK");
+
+                    // 1. Cancelar matrícula ativa de Fernanda em WEB501 para liberar remoção
+                    service.cancelarMatricula("2024006", "WEB501");
+
+                    // 2. Remover aluno elegível (sem ativas)
+                    service.removerAluno("2024006");
+                    verificar(service.listarAlunos().stream().noneMatch(a -> a.getRa().equals("2024006")),
+                            "Fernanda Costa não deveria mais estar na lista de alunos");
+
+                    // 3. Remover disciplina elegível (sem ativas nem vagas ocupadas)
+                    service.removerDisciplina("WEB501");
+                    verificar(service.listarDisciplinas().stream().noneMatch(d -> d.getCodigo().equals("WEB501")),
+                            "WEB501 não deveria mais estar na lista de disciplinas");
+
+                    // 4. Recarregar do disco e conferir integridade
+                    service = new SistemaAcademicoService(new ArquivoRepository(tempDir));
+                    service.carregarDados();
+
+                    verificar(service.listarAlunos().size() == 5, "Esperado 5 alunos após remoção e recarga do CSV");
+                    verificar(service.listarDisciplinas().size() == 4, "Esperado 4 disciplinas após remoção e recarga do CSV");
+                    verificar(service.listarMatriculas().size() == 12, "Esperado 12 matrículas após expurgo e recarga do CSV");
+
+                    registrar("Obtido", "Fernanda e WEB501 removidos com sucesso; CSVs atualizados e recarregados sem referências órfãs");
+                    registrar("Estado", "invariantes I1-I4 OK");
+                    verificarInvariantes(service);
+                });
+
         imprimirResumo();
         System.exit(reprovados == 0 ? 0 : 1);
     }

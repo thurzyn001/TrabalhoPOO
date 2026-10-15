@@ -102,6 +102,7 @@ ana.adicionarMatricula(m)                                            // esperado
 - [x] **2.3** `SistemaAcademicoService`: atributos conforme o diagrama; `carregarDados()` (carga na ordem alunos → disciplinas → matrículas; cálculo de `proximoIdMatricula`).
 - [x] **2.4** `buscarAluno` / `buscarDisciplina` privados, tratando nulo/vazio/inexistente com as mensagens da seção 6 de `ARCHITECTURE.md`.
 - [x] **2.5** `cadastrarAluno(ra, nome)` e `cadastrarDisciplina(codigo, nome, limiteVagas)` validando campos vazios/inválidos e duplicidade via `MatriculaException`, inserindo nos mapas internos e chamando `persistirAlunos()` / `persistirDisciplinas()`.
+- [x] **2.5.1** `removerAluno(ra)` e `removerDisciplina(codigo)` impedindo remoção de entidades com matrículas ativas via `MatriculaException`, expurgando histórico de matrículas e persistindo as alterações.
 - [x] **2.6** `matricular(ra, codigo)` com a ordem: existe aluno → existe disciplina → **duplicidade** → **vagas** → `Matricula.criar(...)` → adiciona à lista global → `persistirMatriculas()`.
 - [x] **2.7** `cancelarMatricula(ra, codigo)` via `aluno.buscarMatriculaAtivaEm(...)` → `cancelar()` → `persistirMatriculas()`.
 - [x] **2.8** `listarDisciplinasAtivas(ra)`, `listarAlunos()`, `listarDisciplinas()`, `listarMatriculas()` devolvendo `List.copyOf(...)`.
@@ -239,8 +240,10 @@ s2.matricular("2024004", "BD201")         // esperado: #10 ... (ids continuam a 
 | **CT11** | Persistência e recarga | Novo repositório + novo service no **mesmo** diretório temporário; depois Bruno Lima → BD201 | Após recarga: 11 matrículas (9 ativas); POO101 4/30, BD201 1/25, ED301 2/20, LAB401 2/2; nova matrícula recebe **#12**; BD201 → 2/25 |
 | **CT12** | Encapsulamento protege a consistência | `aluno.getMatriculas().clear()`, `disciplina.getMatriculas().clear()`, `service.listarAlunos().clear()` | `UnsupportedOperationException` nas 3 tentativas; contagens inalteradas |
 | **CT13** | Cadastro de novo aluno e nova disciplina com matrícula e persistência | Cadastrar Fernanda Costa (2024006), cadastrar WEB501 (2 vagas), matricular Fernanda em WEB501, depois recarregar novo repositório + service no mesmo diretório temporário | Novo Aluno e Disciplina cadastrados; matrícula **#13** ATIVA; WEB501 0/2 → **1/2**; após recarga dos 3 CSVs: Fernanda em `listarAlunos()`, WEB501 em `listarDisciplinas()` com 1/2 vagas, `listarDisciplinasAtivas("2024006")` = [WEB501]; invariantes I1-I4 OK |
+| **CT14** | Bloqueio de remoção com matrículas ativas | Tentar remover Fernanda Costa (2024006) e disciplina WEB501 | `MatriculaException`: "O aluno Fernanda Costa não pode ser removido pois possui matrículas ativas." e "A disciplina WEB501 não pode ser removida pois possui matrículas ativas."; cadastros e matrículas permanecem inalterados; invariantes I1-I4 OK |
+| **CT15** | Remoção válida sem matrículas ativas e persistência | Cancelar matrícula de Fernanda em WEB501, remover Fernanda Costa e disciplina WEB501, depois recarregar novo repositório + service no mesmo diretório temporário | Fernanda e WEB501 removidos com sucesso; expurgo de matrículas do histórico; após recarga dos 3 CSVs: Fernanda não está em `listarAlunos()`, WEB501 não está em `listarDisciplinas()`, `listarMatriculas()` sem referências órfãs; total de matrículas volta a 12; invariantes I1-I4 OK |
 
-> Todos os casos terminam chamando `verificarInvariantes(...)`. No CT11, as verificações usam o **novo** service recarregado (e no CT12 e CT13 também).
+> Todos os casos terminam chamando `verificarInvariantes(...)`. No CT11, as verificações usam o **novo** service recarregado (e no CT12, CT13 e CT15 também).
 
 ### Formato de saída obrigatório
 
@@ -268,10 +271,10 @@ s2.matricular("2024004", "BD201")         // esperado: #10 ... (ids continuam a 
        Obtido  : "O aluno Ana Souza já possui matrícula ativa em POO101."
        Estado  : POO101 permanece 4/30; invariantes I1-I4 OK
 
-   ... (CT04 a CT13 no mesmo formato) ...
+   ... (CT04 a CT15 no mesmo formato) ...
 
 ------------------------------------------------------------------
- RESUMO: 13 casos executados | 13 PASSOU | 0 FALHOU
+ RESUMO: 15 casos executados | 15 PASSOU | 0 FALHOU
 ------------------------------------------------------------------
 
 TABELA PARA O RELATÓRIO (copie e cole em Markdown):
@@ -313,10 +316,10 @@ echo $LASTEXITCODE        # PowerShell — esperado: 0   (Bash: echo $?)
 
 - [x] **5.1** `Main`: criar `ArquivoRepository(Path.of("dados"))` → `SistemaAcademicoService` → `carregarDados()`; em `IOException`, `JOptionPane` de erro e encerrar; abrir a tela com `SwingUtilities.invokeLater`.
 - [x] **5.2** `TelaPrincipal` (`final`, `extends JFrame`, `serialVersionUID`): título `"Sistema Acadêmico — Matrículas"`, ~920×540, centralizada, `EXIT_ON_CLOSE`.
-- [x] **5.3** Painel superior (`FlowLayout`): combos de **Aluno** e **Disciplina** + botões **Matricular**, **Cancelar matrícula**, **+ Novo Aluno** e **+ Nova Disciplina**.
+- [x] **5.3** Painel superior (`FlowLayout`): combos de **Aluno** e **Disciplina** + botões **Matricular**, **Cancelar matrícula**, **+ Novo Aluno**, **- Remover Aluno**, **+ Nova Disciplina** e **- Remover Disciplina**.
 - [x] **5.4** Painel central (`GridLayout(1, 2)`): à esquerda, `JList` "Disciplinas ativas do aluno"; à direita, `JTable` não editável "Ocupação das disciplinas" (Código, Nome, Ocupadas, Limite, Situação = `Disponível`/`LOTADA`).
 - [x] **5.5** Barra de status (`JLabel`) no rodapé com a última operação.
-- [x] **5.6** Eventos: trocar aluno → atualiza a lista; clicar numa disciplina da lista → seleciona-a no combo; botões de matrícula/cancelamento → chamam service; botões Novo Aluno / Nova Disciplina → solicitam campos via `JOptionPane.showInputDialog`, invocam o service → `atualizarTela()` (preservando as seleções) ou `mostrarErro(e.getMessage())`.
+- [x] **5.6** Eventos: trocar aluno → atualiza a lista; clicar numa disciplina da lista → seleciona-a no combo; botões de matrícula/cancelamento → chamam service; botões Novo Aluno / Nova Disciplina → solicitam campos via `JOptionPane.showInputDialog`; botões Remover Aluno / Remover Disciplina → solicitam confirmação com `JOptionPane.showConfirmDialog(..., JOptionPane.YES_NO_OPTION)`, invocam o service → `atualizarTela()` ou `mostrarErro(e.getMessage())`.
 - [x] **5.7** Javadoc + marcadores `[CAMADAS]` em cada chamada ao service.
 
 ### Verificação (roteiro manual — o mesmo da apresentação)
@@ -334,7 +337,9 @@ Apague `dados/`, compile e execute `java -cp bin app.Main`:
 | 7 | Clicar em **+ Novo Aluno** → RA: `2024006`, Nome: `Fernanda Costa` | Diálogo informativo/status de sucesso; combo de alunos passa a incluir Fernanda |
 | 8 | Clicar em **+ Nova Disciplina** → Código: `WEB501`, Nome: `Desenvolvimento Web`, Limite: `2` | Sucesso; combo e tabela passam a exibir WEB501 (0/2, Disponível) |
 | 9 | Selecionar **Fernanda Costa** e matricular em **WEB501** | Sucesso; ocupação de WEB501 vai para 1/2; lista ativa de Fernanda = [WEB501] |
-| 10 | Fechar e reabrir o programa | Todo o estado anterior (inclusive novos cadastros) é mantido em disco |
+| 10 | Tentar remover **Fernanda Costa** ou **WEB501** com matrículas ativas | Diálogo de erro bloqueando remoção por integridade referencial |
+| 11 | Cancelar matrícula de Fernanda em WEB501 e remover ambos após confirmação | Remoção com sucesso; Fernanda e WEB501 saem dos combos e tabela |
+| 12 | Fechar e reabrir o programa | Todo o estado persistido (inclusive remoções) é mantido em disco |
 
 ### Verificações estruturais (PowerShell)
 
@@ -347,13 +352,13 @@ Select-String -Path src\service\*.java -Pattern "javax\.swing|java\.awt|System\.
 
 ### Critérios de aceite
 
-- [x] Roteiro manual 1–10 executado sem divergências.
+- [x] Roteiro manual 1–12 executado sem divergências.
 - [x] Verificações estruturais sem nenhuma saída indevida; total de **9** arquivos `.java`.
-- [x] `java -cp bin app.CasosDeTesteRunner` continua com **13/13 PASSOU**.
+- [x] `java -cp bin app.CasosDeTesteRunner` continua com **15/15 PASSOU**.
 - [x] Compilação com `-Xlint:all` sem avisos.
 - [x] Checklist **"Definição de Pronto"** de `AGENTS.md` (seção 10) 100% marcado.
 
-**Commit sugerido:** `feat(view): interface Swing com matrículas e cadastros dinâmicos`
+**Commit sugerido:** `feat: funcionalidades de remoção de alunos e disciplinas com validação de integridade referencial`
 
 ---
 

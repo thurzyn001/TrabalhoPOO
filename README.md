@@ -199,13 +199,15 @@ Criados automaticamente quando a pasta `dados/` não existe. **Os casos de teste
 6. Voltar para **Elisa** e matriculá-la em **LAB401** → agora com sucesso (2/2).
 7. Clicar em **+ Novo Aluno** (RA: `2024006`, Nome: `Fernanda Costa`) e em **+ Nova Disciplina** (Código: `WEB501`, Nome: `Desenvolvimento Web`, Limite: `2`) → ambos aparecem de imediato nos combos e na tabela de ocupação.
 8. Selecionar **Fernanda Costa** e matriculá-la em **WEB501** → sucesso (ocupação: 1/2).
-9. Fechar e reabrir o programa → todos os dados e novos cadastros persistem nos arquivos CSV.
+9. Tentar remover **Fernanda Costa** ou **WEB501** → erro de integridade (bloqueado por possuir matrículas ativas).
+10. Cancelar a matrícula de **Fernanda Costa** em **WEB501** e clicar em **- Remover Aluno** e **- Remover Disciplina** (com diálogo de confirmação) → ambos são removidos com sucesso.
+11. Fechar e reabrir o programa → todos os dados, novos cadastros e remoções persistem nos arquivos CSV.
 
 ---
 
 ## 📊 Análise de Resultados (para o relatório)
 
-Execute `java -cp bin app.CasosDeTesteRunner`. A execução dos 13 casos de teste automatizados produz:
+Execute `java -cp bin app.CasosDeTesteRunner`. A execução dos 15 casos de teste automatizados produz:
 
 1. Um **bloco detalhado** por caso de teste (entrada, resultado esperado, resultado obtido, estado após a operação);
 2. Uma **tabela em Markdown** pronta para ser copiada para a seção *Análise de Resultados* do relatório.

@@ -55,7 +55,7 @@ public final class TelaPrincipal extends JFrame {
         this.service = Objects.requireNonNull(service, "O serviço acadêmico não pode ser nulo.");
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(940, 560);
+        setSize(1020, 560);
         setLocationRelativeTo(null);
 
         this.comboAlunos = new JComboBox<>();
@@ -95,12 +95,16 @@ public final class TelaPrincipal extends JFrame {
         JButton btnMatricular = new JButton("Matricular");
         JButton btnCancelar = new JButton("Cancelar matrícula");
         JButton btnNovoAluno = new JButton("+ Novo Aluno");
+        JButton btnRemoverAluno = new JButton("- Remover Aluno");
         JButton btnNovaDisciplina = new JButton("+ Nova Disciplina");
+        JButton btnRemoverDisciplina = new JButton("- Remover Disciplina");
 
         painelSuperior.add(btnMatricular);
         painelSuperior.add(btnCancelar);
         painelSuperior.add(btnNovoAluno);
+        painelSuperior.add(btnRemoverAluno);
         painelSuperior.add(btnNovaDisciplina);
+        painelSuperior.add(btnRemoverDisciplina);
 
         // Painel Central: Lista de ativas à esquerda e Tabela de ocupação à direita
         JPanel painelCentral = new JPanel(new GridLayout(1, 2, 12, 10));
@@ -149,7 +153,9 @@ public final class TelaPrincipal extends JFrame {
         btnMatricular.addActionListener(e -> aoMatricular());
         btnCancelar.addActionListener(e -> aoCancelar());
         btnNovoAluno.addActionListener(e -> aoNovoAluno());
+        btnRemoverAluno.addActionListener(e -> aoRemoverAluno());
         btnNovaDisciplina.addActionListener(e -> aoNovaDisciplina());
+        btnRemoverDisciplina.addActionListener(e -> aoRemoverDisciplina());
     }
 
     /**
@@ -281,6 +287,66 @@ public final class TelaPrincipal extends JFrame {
             comboDisciplinas.setSelectedItem(novaDisciplina);
         } catch (MatriculaException ex) {
             mostrarErro(ex.getMessage());
+        }
+    }
+
+    /**
+     * Confirma e executa a remoção do aluno selecionado no combo.
+     */
+    private void aoRemoverAluno() {
+        Aluno aluno = (Aluno) comboAlunos.getSelectedItem();
+        if (aluno == null) {
+            mostrarErro("Selecione um aluno para remover.");
+            return;
+        }
+
+        int confirmacao = JOptionPane.showConfirmDialog(
+                this,
+                "Deseja realmente remover o aluno " + aluno.getNome() + " (RA: " + aluno.getRa() + ")?",
+                "Confirmar Remoção de Aluno",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+
+        if (confirmacao == JOptionPane.YES_OPTION) {
+            try {
+                // [CAMADAS] Delega a remoção do aluno para o serviço
+                service.removerAluno(aluno.getRa());
+                mostrarSucesso("Aluno " + aluno.getNome() + " removido com sucesso.");
+                atualizarTela();
+            } catch (MatriculaException ex) {
+                mostrarErro(ex.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Confirma e executa a remoção da disciplina selecionada no combo.
+     */
+    private void aoRemoverDisciplina() {
+        Disciplina disciplina = (Disciplina) comboDisciplinas.getSelectedItem();
+        if (disciplina == null) {
+            mostrarErro("Selecione uma disciplina para remover.");
+            return;
+        }
+
+        int confirmacao = JOptionPane.showConfirmDialog(
+                this,
+                "Deseja realmente remover a disciplina " + disciplina.getNome() + " (" + disciplina.getCodigo() + ")?",
+                "Confirmar Remoção de Disciplina",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+
+        if (confirmacao == JOptionPane.YES_OPTION) {
+            try {
+                // [CAMADAS] Delega a remoção da disciplina para o serviço
+                service.removerDisciplina(disciplina.getCodigo());
+                mostrarSucesso("Disciplina " + disciplina.getCodigo() + " removida com sucesso.");
+                atualizarTela();
+            } catch (MatriculaException ex) {
+                mostrarErro(ex.getMessage());
+            }
         }
     }
 

@@ -157,6 +157,8 @@ classDiagram
         +carregarDados() void
         +cadastrarAluno(String ra, String nome) Aluno
         +cadastrarDisciplina(String codigo, String nome, int limiteVagas) Disciplina
+        +removerAluno(String ra) void
+        +removerDisciplina(String codigo) void
         +matricular(String ra, String codigoDisciplina) Matricula
         +cancelarMatricula(String ra, String codigoDisciplina) void
         +listarDisciplinasAtivas(String ra) List~Disciplina~
@@ -205,6 +207,8 @@ classDiagram
         -aoCancelar() void
         -aoNovoAluno() void
         -aoNovaDisciplina() void
+        -aoRemoverAluno() void
+        -aoRemoverDisciplina() void
         -atualizarTela() void
         -atualizarDisciplinasDoAluno() void
         -atualizarTabelaOcupacao() void
@@ -366,6 +370,8 @@ stateDiagram-v2
 | **`carregarDados()`** | Se `!repositorio.existemDados()`, chama `repositorio.gerarSeed()`. Depois carrega alunos → disciplinas → matrículas (nesta ordem, pois matrículas dependem dos dois) e define `proximoIdMatricula = maior id + 1` (ou `1` se não houver matrículas). Declara `throws IOException`. |
 | **`cadastrarAluno(ra, nome)`** | Valida se `ra` ou `nome` são nulos/em branco; verifica duplicidade no mapa de alunos (`alunosPorRa.containsKey(ra)`); cria `Aluno`, insere no mapa, chama `persistirAlunos()` e retorna o aluno cadastrado. |
 | **`cadastrarDisciplina(codigo, nome, limiteVagas)`** | Valida `codigo` e `nome` (não nulos/em branco); valida `limiteVagas > 0`; verifica duplicidade (`disciplinasPorCodigo.containsKey(codigo)`); cria `Disciplina`, insere no mapa, chama `persistirDisciplinas()` e retorna a disciplina cadastrada. |
+| **`removerAluno(ra)`** | Valida `ra`; localiza aluno; impede remoção se `!aluno.getDisciplinasAtivas().isEmpty()` com `MatriculaException("O aluno <nome> não pode ser removido pois possui matrículas ativas.")`; remove de `alunosPorRa`; expurga eventuais matrículas com status `CANCELADA` do aluno da lista `matriculas`; chama `persistirAlunos()` e `persistirMatriculas()`. |
+| **`removerDisciplina(codigo)`** | Valida `codigo`; localiza disciplina; impede remoção se `disciplina.getVagasOcupadas() > 0 || !disciplina.getMatriculasAtivas().isEmpty()` com `MatriculaException("A disciplina <codigo> não pode ser removida pois possui matrículas ativas.")`; remove de `disciplinasPorCodigo`; expurga eventuais matrículas com status `CANCELADA` da disciplina da lista `matriculas`; chama `persistirDisciplinas()` e `persistirMatriculas()`. |
 | **`matricular(ra, codigo)`** | Ordem fixa de verificação: (1) aluno existe; (2) disciplina existe; (3) **não duplicada**; (4) **há vagas**. Só então `Matricula.criar(proximoIdMatricula++, aluno, disciplina, LocalDate.now())`, adiciona à lista global e chama `persistirMatriculas()`. Retorna a matrícula criada. |
 | **`cancelarMatricula(ra, codigo)`** | Localiza aluno e disciplina; obtém `aluno.buscarMatriculaAtivaEm(disciplina)`; se vazio, lança `MatriculaException`; senão `matricula.cancelar()` e `persistirMatriculas()`. |
 | **`listarDisciplinasAtivas(ra)`** | Localiza o aluno e devolve `aluno.getDisciplinasAtivas()`. |
@@ -399,7 +405,7 @@ Janela única (`JFrame`, ~920×540, centralizada, `EXIT_ON_CLOSE`, título `"Sis
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │ Aluno: [2024005 - Elisa Ferreira ▼]  Disciplina: [POO101 - ... (3/30) ▼]              │
-│ [ Matricular ]  [ Cancelar matrícula ]   [ + Novo Aluno ]   [ + Nova Disciplina ]      │
+│ [ Matricular ] [ Cancelar matrícula ] [ + Aluno ] [ - Aluno ] [ + Disc. ] [ - Disc. ] │
 ├────────────────────────────┬───────────────────────────────────────────────────────────┤
 │ Disciplinas ativas do aluno│ Ocupação das disciplinas                                  │
 │ ┌────────────────────────┐ │ Código │ Nome          │ Ocup. │ Lim. │ Situação          │
@@ -412,7 +418,8 @@ Janela única (`JFrame`, ~920×540, centralizada, `EXIT_ON_CLOSE`, título `"Sis
 ```
 
 - Trocar o aluno no combo atualiza a lista de disciplinas ativas.
-- Botões **"Novo Aluno"** e **"Nova Disciplina"**: acionam caixas de diálogo simples com `JOptionPane.showInputDialog` para coletar os campos necessários (RA e nome para aluno; código, nome e limite de vagas para disciplina), chamam o respectivo método no service e atualizam a tela sem necessidade de novas classes ou formulários complexos.
+- Botões **"+ Novo Aluno"** e **"+ Nova Disciplina"**: acionam caixas de diálogo com `JOptionPane.showInputDialog` para coletar os campos necessários (RA e nome para aluno; código, nome e limite de vagas para disciplina), chamam o respectivo método no service e atualizam a tela sem necessidade de novas classes ou formulários complexos.
+- Botões **"- Remover Aluno"** e **"- Remover Disciplina"**: acionam caixa de confirmação com `JOptionPane.showConfirmDialog(..., JOptionPane.YES_NO_OPTION)`. Se confirmado, chamam `removerAluno(ra)` ou `removerDisciplina(codigo)` no service e atualizam a tela (ou exibem mensagem de erro se possuírem matrículas ativas).
 - Botões chamam **apenas** métodos públicos do service; `MatriculaException` vira `JOptionPane` de erro.
 - Clicar numa disciplina da lista de ativas seleciona-a no combo de disciplinas (facilita o cancelamento).
 - Após qualquer operação: `atualizarTela()` recarrega combos (preservando a seleção), lista e tabela.
@@ -539,6 +546,8 @@ As mensagens abaixo são **contrato**: os testes e a interface dependem delas.
 | Código nulo ou vazio ao cadastrar | `cadastrarDisciplina` | `O código da disciplina não pode ser nulo ou vazio.` |
 | Nome nulo ou vazio ao cadastrar | `cadastrarDisciplina` | `O nome da disciplina não pode ser nulo ou vazio.` |
 | Limite de vagas inválido (<= 0) | `cadastrarDisciplina` | `O limite de vagas deve ser maior que zero.` |
+| **Tentativa de remover aluno com matrículas ativas** | `removerAluno` | `O aluno <nome> não pode ser removido pois possui matrículas ativas.` |
+| **Tentativa de remover disciplina com matrículas ativas** | `removerDisciplina` | `A disciplina <codigo> não pode ser removida pois possui matrículas ativas.` |
 | Falha de I/O ao salvar | `persistirMatriculas` / `persistirAlunos` / `persistirDisciplinas` | `Falha ao salvar os dados: <mensagem da IOException>` |
 
 Exemplos reais com o seed: `O aluno Ana Souza já possui matrícula ativa em POO101.` ·

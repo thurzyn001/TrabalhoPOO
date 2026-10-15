@@ -151,6 +151,64 @@ public final class SistemaAcademicoService {
     }
 
     /**
+     * Remove um aluno do sistema, desde que ele não possua nenhuma matrícula ativa.
+     *
+     * @param ra o RA do aluno a ser removido
+     * @throws MatriculaException se o aluno não for encontrado ou se possuir matrículas ativas
+     */
+    public void removerAluno(String ra) throws MatriculaException {
+        // [REGRA DE NEGÓCIO] Validação de parâmetros
+        if (ra == null || ra.isBlank()) {
+            throw new MatriculaException("O RA do aluno não pode ser nulo ou vazio.");
+        }
+        Aluno aluno = buscarAluno(ra.trim());
+
+        // [REGRA DE NEGÓCIO] Bloqueio de remoção caso o aluno possua matrículas ativas
+        if (!aluno.getDisciplinasAtivas().isEmpty()) {
+            throw new MatriculaException("O aluno " + aluno.getNome() + " não pode ser removido pois possui matrículas ativas.");
+        }
+
+        // [CONSISTÊNCIA] Remove o aluno do repositório em memória
+        alunosPorRa.remove(aluno.getRa());
+
+        // [CONSISTÊNCIA] Expurgar matrículas históricas (CANCELADA) do aluno para evitar integridade referencial órfã no CSV
+        matriculas.removeIf(m -> m.getAluno().getRa().equals(aluno.getRa()));
+
+        // [PERSISTÊNCIA] Atualizar persistência em disco
+        persistirAlunos();
+        persistirMatriculas();
+    }
+
+    /**
+     * Remove uma disciplina do sistema, desde que ela não possua nenhuma matrícula ativa nem vagas ocupadas.
+     *
+     * @param codigo o código da disciplina a ser removida
+     * @throws MatriculaException se a disciplina não for encontrada ou se possuir matrículas ativas
+     */
+    public void removerDisciplina(String codigo) throws MatriculaException {
+        // [REGRA DE NEGÓCIO] Validação de parâmetros
+        if (codigo == null || codigo.isBlank()) {
+            throw new MatriculaException("O código da disciplina não pode ser nulo ou vazio.");
+        }
+        Disciplina disciplina = buscarDisciplina(codigo.trim());
+
+        // [REGRA DE NEGÓCIO] Bloqueio de remoção caso a disciplina possua matrículas ativas
+        if (disciplina.getVagasOcupadas() > 0 || !disciplina.getMatriculasAtivas().isEmpty()) {
+            throw new MatriculaException("A disciplina " + disciplina.getCodigo() + " não pode ser removida pois possui matrículas ativas.");
+        }
+
+        // [CONSISTÊNCIA] Remove a disciplina do repositório em memória
+        disciplinasPorCodigo.remove(disciplina.getCodigo());
+
+        // [CONSISTÊNCIA] Expurgar matrículas históricas (CANCELADA) da disciplina para evitar integridade referencial órfã no CSV
+        matriculas.removeIf(m -> m.getDisciplina().getCodigo().equals(disciplina.getCodigo()));
+
+        // [PERSISTÊNCIA] Atualizar persistência em disco
+        persistirDisciplinas();
+        persistirMatriculas();
+    }
+
+    /**
      * Realiza a matrícula de um aluno em uma disciplina com validação de regras de negócio.
      *
      * @param ra o RA do aluno a ser matriculado
