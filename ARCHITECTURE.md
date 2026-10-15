@@ -404,8 +404,8 @@ Janela única (`JFrame`, ~920×540, centralizada, `EXIT_ON_CLOSE`, título `"Sis
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ Aluno: [2024005 - Elisa Ferreira ▼]  Disciplina: [POO101 - ... (3/30) ▼]              │
-│ [ Matricular ] [ Cancelar matrícula ] [ + Aluno ] [ - Aluno ] [ + Disc. ] [ - Disc. ] │
+│ Aluno: [2024005 - Elisa Ferreira ▼] Disciplina: [POO101 ▼] [Matricular] [Cancelar mat.]│
+│ [ + Novo Aluno ] [ - Remover Aluno ] | [ + Nova Disciplina ] [ - Remover Disciplina ]  │
 ├────────────────────────────┬───────────────────────────────────────────────────────────┤
 │ Disciplinas ativas do aluno│ Ocupação das disciplinas                                  │
 │ ┌────────────────────────┐ │ Código │ Nome          │ Ocup. │ Lim. │ Situação          │

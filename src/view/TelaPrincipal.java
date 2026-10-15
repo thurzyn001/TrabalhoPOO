@@ -55,7 +55,7 @@ public final class TelaPrincipal extends JFrame {
         this.service = Objects.requireNonNull(service, "O serviço acadêmico não pode ser nulo.");
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1020, 560);
+        setSize(1020, 580);
         setLocationRelativeTo(null);
 
         this.comboAlunos = new JComboBox<>();
@@ -83,14 +83,8 @@ public final class TelaPrincipal extends JFrame {
      * Monta a estrutura de componentes visuais e conecta os tratadores de eventos.
      */
     private void montarLayout() {
-        // Painel Superior: Seleções e Botões de Ação
-        JPanel painelSuperior = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
-
-        painelSuperior.add(new JLabel("Aluno:"));
-        painelSuperior.add(comboAlunos);
-
-        painelSuperior.add(new JLabel("Disciplina:"));
-        painelSuperior.add(comboDisciplinas);
+        // Painel Superior: Dividido em duas linhas para visualização clara de todos os controles
+        JPanel painelSuperior = new JPanel(new GridLayout(2, 1, 0, 4));
 
         JButton btnMatricular = new JButton("Matricular");
         JButton btnCancelar = new JButton("Cancelar matrícula");
@@ -99,12 +93,23 @@ public final class TelaPrincipal extends JFrame {
         JButton btnNovaDisciplina = new JButton("+ Nova Disciplina");
         JButton btnRemoverDisciplina = new JButton("- Remover Disciplina");
 
-        painelSuperior.add(btnMatricular);
-        painelSuperior.add(btnCancelar);
-        painelSuperior.add(btnNovoAluno);
-        painelSuperior.add(btnRemoverAluno);
-        painelSuperior.add(btnNovaDisciplina);
-        painelSuperior.add(btnRemoverDisciplina);
+        JPanel linha1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+        linha1.add(new JLabel("Aluno:"));
+        linha1.add(comboAlunos);
+        linha1.add(new JLabel("Disciplina:"));
+        linha1.add(comboDisciplinas);
+        linha1.add(btnMatricular);
+        linha1.add(btnCancelar);
+
+        JPanel linha2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+        linha2.add(btnNovoAluno);
+        linha2.add(btnRemoverAluno);
+        linha2.add(new JLabel("  |  "));
+        linha2.add(btnNovaDisciplina);
+        linha2.add(btnRemoverDisciplina);
+
+        painelSuperior.add(linha1);
+        painelSuperior.add(linha2);
 
         // Painel Central: Lista de ativas à esquerda e Tabela de ocupação à direita
         JPanel painelCentral = new JPanel(new GridLayout(1, 2, 12, 10));
