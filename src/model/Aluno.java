@@ -15,9 +15,9 @@ import java.util.Optional;
  */
 public final class Aluno {
 
-    // [ENCAPSULAMENTO] Atributos privados e imutáveis após a construção
+    // [ENCAPSULAMENTO] Atributos privados; RA e matriculas são imutáveis; nome é atualizável via alterarNome
     private final String ra;
-    private final String nome;
+    private String nome;
     private final List<Matricula> matriculas;
 
     /**
@@ -55,6 +55,21 @@ public final class Aluno {
      */
     public String getNome() {
         return nome;
+    }
+
+    /**
+     * Altera o nome do aluno.
+     * Método com semântica de negócio para atualização cadastral do aluno.
+     *
+     * @param novoNome o novo nome completo do aluno (não nulo e não vazio)
+     * @throws IllegalArgumentException se o novo nome for nulo ou vazio
+     */
+    public void alterarNome(String novoNome) {
+        if (novoNome == null || novoNome.isBlank()) {
+            throw new IllegalArgumentException("Nome não pode ser nulo ou vazio.");
+        }
+        // [ENCAPSULAMENTO] Atualização segura do atributo com validação e sem setters genéricos
+        this.nome = novoNome.trim();
     }
 
     /**

@@ -85,6 +85,7 @@ classDiagram
         +Aluno(String ra, String nome)
         +getRa() String
         +getNome() String
+        +alterarNome(String novoNome) void
         +getMatriculas() List~Matricula~
         +getDisciplinasAtivas() List~Disciplina~
         +buscarMatriculaAtivaEm(Disciplina disciplina) Optional~Matricula~
@@ -105,6 +106,8 @@ classDiagram
         +getCodigo() String
         +getNome() String
         +getLimiteVagas() int
+        +alterarNome(String novoNome) void
+        +alterarLimiteVagas(int novoLimite) void
         +getVagasOcupadas() int
         +getVagasDisponiveis() int
         +temVagas() boolean
@@ -157,6 +160,8 @@ classDiagram
         +carregarDados() void
         +cadastrarAluno(String ra, String nome) Aluno
         +cadastrarDisciplina(String codigo, String nome, int limiteVagas) Disciplina
+        +editarAluno(String ra, String novoNome) Aluno
+        +editarDisciplina(String codigo, String novoNome, int novoLimiteVagas) Disciplina
         +removerAluno(String ra) void
         +removerDisciplina(String codigo) void
         +matricular(String ra, String codigoDisciplina) Matricula
@@ -207,8 +212,12 @@ classDiagram
         -aoCancelar() void
         -aoNovoAluno() void
         -aoNovaDisciplina() void
+        -aoEditarAluno() void
+        -aoEditarDisciplina() void
         -aoRemoverAluno() void
         -aoRemoverDisciplina() void
+        -pedirTexto(String titulo, String mensagem, String valorInicial) String
+        -pedirInteiro(String titulo, String mensagem, String valorInicial) Integer
         -atualizarTela() void
         -atualizarDisciplinasDoAluno() void
         -atualizarTabelaOcupacao() void
@@ -318,6 +327,7 @@ Leitura das multiplicidades:
 | **Vínculo** | `adicionarMatricula(...)` é **package-private** (`~`): só `Matricula.criar(...)` o chama. |
 | **Consultas** | `getDisciplinasAtivas()` percorre as matrículas e devolve as disciplinas cujas matrículas estão `ATIVA`, na ordem de matrícula. `buscarMatriculaAtivaEm(d)` devolve `Optional<Matricula>`; `possuiMatriculaAtivaEm(d)` usa o método anterior. |
 | **Validação** | Construtor rejeita `ra`/`nome` nulos ou vazios com `IllegalArgumentException`. |
+| **Edição** | `alterarNome(novoNome)` é um **método de negócio** (não um *setter* genérico): valida o novo nome (nulo/vazio → `IllegalArgumentException`) e o aplica sem espaços nas pontas. Por isso `nome` **não** é `final`. O `ra` continua `final`: ele é a identidade usada em `equals`/`hashCode`, nos mapas do service e no `matriculas.csv`. |
 | **`toString()`** | `"2024001 - Ana Souza"` (usado diretamente pelo `JComboBox`). |
 
 ### 4.2 `model.Disciplina`
@@ -330,6 +340,7 @@ Leitura das multiplicidades:
 | **Defesa** | `ocuparVaga()` lança `IllegalStateException` se `vagasOcupadas >= limiteVagas`; `liberarVaga()` lança `IllegalStateException` se `vagasOcupadas == 0`. São proteções de **último nível** — a regra amigável fica no service. |
 | **Consultas** | `temVagas()` ⇔ `vagasOcupadas < limiteVagas`; `getVagasDisponiveis()` = `limiteVagas - vagasOcupadas`; `getMatriculasAtivas()` filtra por status. |
 | **Validação** | Construtor rejeita `codigo`/`nome` vazios e `limiteVagas <= 0`. |
+| **Edição** | `alterarNome(novoNome)` rejeita nome nulo/vazio (`IllegalArgumentException`). `alterarLimiteVagas(novoLimite)` rejeita `novoLimite <= 0` (`IllegalArgumentException`) e **`novoLimite < vagasOcupadas`** (`IllegalStateException`, defesa da **I3**: reduzir o limite abaixo das vagas já ocupadas deixaria alunos "fora" da capacidade). Por isso `nome` e `limiteVagas` **não** são `final`; o `codigo` continua `final` (identidade). |
 | **`toString()`** | `"POO101 - Programação Orientada a Objetos (3/30)"`. |
 
 ### 4.3 `model.Matricula` (classe associativa)
@@ -370,6 +381,8 @@ stateDiagram-v2
 | **`carregarDados()`** | Se `!repositorio.existemDados()`, chama `repositorio.gerarSeed()`. Depois carrega alunos → disciplinas → matrículas (nesta ordem, pois matrículas dependem dos dois) e define `proximoIdMatricula = maior id + 1` (ou `1` se não houver matrículas). Declara `throws IOException`. |
 | **`cadastrarAluno(ra, nome)`** | Valida se `ra` ou `nome` são nulos/em branco; verifica duplicidade no mapa de alunos (`alunosPorRa.containsKey(ra)`); cria `Aluno`, insere no mapa, chama `persistirAlunos()` e retorna o aluno cadastrado. |
 | **`cadastrarDisciplina(codigo, nome, limiteVagas)`** | Valida `codigo` e `nome` (não nulos/em branco); valida `limiteVagas > 0`; verifica duplicidade (`disciplinasPorCodigo.containsKey(codigo)`); cria `Disciplina`, insere no mapa, chama `persistirDisciplinas()` e retorna a disciplina cadastrada. |
+| **`editarAluno(ra, novoNome)`** | Valida `ra` e `novoNome` (não nulos/em branco, mesmas mensagens do cadastro); localiza o aluno via `buscarAluno`; chama `aluno.alterarNome(novoNome)`; `persistirAlunos()`; retorna o aluno. O RA **não** muda, então `matriculas.csv` não precisa ser regravado e todos os vínculos são preservados. |
+| **`editarDisciplina(codigo, novoNome, novoLimiteVagas)`** | Ordem fixa: (1) `codigo` e `novoNome` não nulos/em branco; (2) `novoLimiteVagas > 0`; (3) disciplina existe; (4) **`novoLimiteVagas >= vagasOcupadas`** (senão `MatriculaException` — protege a I3). Só então `alterarNome(...)` e `alterarLimiteVagas(...)`, `persistirDisciplinas()` e retorna a disciplina. Como todas as validações ocorrem **antes** de qualquer alteração, uma recusa não deixa a disciplina "meio editada". |
 | **`removerAluno(ra)`** | Valida `ra`; localiza aluno; impede remoção se `!aluno.getDisciplinasAtivas().isEmpty()` com `MatriculaException("O aluno <nome> não pode ser removido pois possui matrículas ativas.")`; remove de `alunosPorRa`; expurga eventuais matrículas com status `CANCELADA` do aluno da lista `matriculas`; chama `persistirAlunos()` e `persistirMatriculas()`. |
 | **`removerDisciplina(codigo)`** | Valida `codigo`; localiza disciplina; impede remoção se `disciplina.getVagasOcupadas() > 0 || !disciplina.getMatriculasAtivas().isEmpty()` com `MatriculaException("A disciplina <codigo> não pode ser removida pois possui matrículas ativas.")`; remove de `disciplinasPorCodigo`; expurga eventuais matrículas com status `CANCELADA` da disciplina da lista `matriculas`; chama `persistirDisciplinas()` e `persistirMatriculas()`. |
 | **`matricular(ra, codigo)`** | Ordem fixa de verificação: (1) aluno existe; (2) disciplina existe; (3) **não duplicada**; (4) **há vagas**. Só então `Matricula.criar(proximoIdMatricula++, aluno, disciplina, LocalDate.now())`, adiciona à lista global e chama `persistirMatriculas()`. Retorna a matrícula criada. |
@@ -405,7 +418,7 @@ Janela única (`JFrame`, ~920×540, centralizada, `EXIT_ON_CLOSE`, título `"Sis
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │ Aluno: [2024005 - Elisa Ferreira ▼] Disciplina: [POO101 ▼] [Matricular] [Cancelar mat.]│
-│ [ + Novo Aluno ] [ - Remover Aluno ] | [ + Nova Disciplina ] [ - Remover Disciplina ]  │
+│ [ + Novo Aluno ] [ * Editar Aluno ] [ - Remover Aluno ] | [ + Nova Disciplina ] [ * Editar Disciplina ] [ - Remover Disciplina ] │
 ├────────────────────────────┬───────────────────────────────────────────────────────────┤
 │ Disciplinas ativas do aluno│ Ocupação das disciplinas                                  │
 │ ┌────────────────────────┐ │ Código │ Nome          │ Ocup. │ Lim. │ Situação          │
@@ -418,7 +431,9 @@ Janela única (`JFrame`, ~920×540, centralizada, `EXIT_ON_CLOSE`, título `"Sis
 ```
 
 - Trocar o aluno no combo atualiza a lista de disciplinas ativas.
-- Botões **"+ Novo Aluno"** e **"+ Nova Disciplina"**: acionam caixas de diálogo com `JOptionPane.showInputDialog` para coletar os campos necessários (RA e nome para aluno; código, nome e limite de vagas para disciplina), chamam o respectivo método no service e atualizam a tela sem necessidade de novas classes ou formulários complexos.
+- Botões **"+ Novo Aluno"** e **"+ Nova Disciplina"**: acionam diálogo de entrada via métodos auxiliares `pedirTexto(...)` e `pedirInteiro(...)` para coletar os campos necessários (RA e nome para aluno; código, nome e limite de vagas para disciplina), chamam o respectivo método no service e atualizam a tela sem necessidade de novas classes ou formulários complexos.
+- Botões **"* Editar Aluno"** e **"* Editar Disciplina"**: obtêm o aluno ou disciplina selecionados nos combos, solicitam os novos valores pré-preenchidos via `pedirTexto(...)` e `pedirInteiro(...)`, chamam `editarAluno(ra, novoNome)` ou `editarDisciplina(codigo, novoNome, novoLimiteVagas)` no service e atualizam a tela.
+- Métodos auxiliares **`pedirTexto`** e **`pedirInteiro`**: executam um laço de repetição (`while (true)`). Caso o usuário confirme com entrada inválida (em branco, texto onde se espera número inteiro, ou valor menor/igual a zero), exibem um aviso explicativo (`JOptionPane.WARNING_MESSAGE`) e reabrem o diálogo mantendo o texto digitado anteriormente, impedindo o cancelamento indesejado do fluxo por erro acidental de digitação. Caso o usuário clique em Cancelar ou feche a janela, o método retorna `null` e a operação é abortada sem alterações.
 - Botões **"- Remover Aluno"** e **"- Remover Disciplina"**: acionam caixa de confirmação com `JOptionPane.showConfirmDialog(..., JOptionPane.YES_NO_OPTION)`. Se confirmado, chamam `removerAluno(ra)` ou `removerDisciplina(codigo)` no service e atualizam a tela (ou exibem mensagem de erro se possuírem matrículas ativas).
 - Botões chamam **apenas** métodos públicos do service; `MatriculaException` vira `JOptionPane` de erro.
 - Clicar numa disciplina da lista de ativas seleciona-a no combo de disciplinas (facilita o cancelamento).
@@ -545,13 +560,17 @@ As mensagens abaixo são **contrato**: os testes e a interface dependem delas.
 | Nome nulo ou vazio ao cadastrar | `cadastrarAluno` | `O nome do aluno não pode ser nulo ou vazio.` |
 | Código nulo ou vazio ao cadastrar | `cadastrarDisciplina` | `O código da disciplina não pode ser nulo ou vazio.` |
 | Nome nulo ou vazio ao cadastrar | `cadastrarDisciplina` | `O nome da disciplina não pode ser nulo ou vazio.` |
-| Limite de vagas inválido (<= 0) | `cadastrarDisciplina` | `O limite de vagas deve ser maior que zero.` |
+| Limite de vagas inválido (<= 0) | `cadastrarDisciplina` / `editarDisciplina` | `O limite de vagas deve ser maior que zero.` |
+| Nome nulo ou vazio ao editar aluno | `editarAluno` | `O nome do aluno não pode ser nulo ou vazio.` |
+| Nome nulo ou vazio ao editar disciplina | `editarDisciplina` | `O nome da disciplina não pode ser nulo ou vazio.` |
+| **Tentativa de reduzir limite abaixo das vagas ocupadas** | `editarDisciplina` | `O novo limite de vagas (<novo>) não pode ser menor que o total de vagas já ocupadas (<ocupadas>).` |
 | **Tentativa de remover aluno com matrículas ativas** | `removerAluno` | `O aluno <nome> não pode ser removido pois possui matrículas ativas.` |
 | **Tentativa de remover disciplina com matrículas ativas** | `removerDisciplina` | `A disciplina <codigo> não pode ser removida pois possui matrículas ativas.` |
 | Falha de I/O ao salvar | `persistirMatriculas` / `persistirAlunos` / `persistirDisciplinas` | `Falha ao salvar os dados: <mensagem da IOException>` |
 
 Exemplos reais com o seed: `O aluno Ana Souza já possui matrícula ativa em POO101.` ·
-`A disciplina LAB401 está lotada (2/2 vagas ocupadas).` · `Aluno com RA '2024001' já está cadastrado.`
+`A disciplina LAB401 está lotada (2/2 vagas ocupadas).` · `Aluno com RA '2024001' já está cadastrado.` ·
+`O novo limite de vagas (1) não pode ser menor que o total de vagas já ocupadas (2).`
 
 ---
 

@@ -190,7 +190,7 @@ Somente estes arquivos `.java` podem existir (caminhos relativos a `src/`):
 
 - [x] Exatamente 9 arquivos `.java` nos pacotes corretos.
 - [x] `javac -Xlint:all` sem erros e sem avisos.
-- [x] `java -cp bin app.CasosDeTesteRunner` → **15/15 casos PASSOU**, código de saída `0`.
+- [x] `java -cp bin app.CasosDeTesteRunner` → **17/17 casos PASSOU**, código de saída `0`.
 - [x] `java -cp bin app.Main` abre a janela e o roteiro de demonstração do `README.md` funciona do início ao fim.
 - [x] Apagar `dados/` e reexecutar recria o seed corretamente.
 - [x] Nenhum import proibido pela matriz da seção 3 (verificável com busca textual).

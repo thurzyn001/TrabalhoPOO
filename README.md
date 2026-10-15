@@ -197,17 +197,20 @@ Criados automaticamente quando a pasta `dados/` não existe. **Os casos de teste
 4. Selecionar **Elisa** e tentar matriculá-la em **LAB401** → erro de **disciplina lotada** (2/2).
 5. Selecionar **Bruno Lima** e **cancelar** sua matrícula em **LAB401** → ocupação vai para 1/2.
 6. Voltar para **Elisa** e matriculá-la em **LAB401** → agora com sucesso (2/2).
-7. Clicar em **+ Novo Aluno** (RA: `2024006`, Nome: `Fernanda Costa`) e em **+ Nova Disciplina** (Código: `WEB501`, Nome: `Desenvolvimento Web`, Limite: `2`) → ambos aparecem de imediato nos combos e na tabela de ocupação.
-8. Selecionar **Fernanda Costa** e matriculá-la em **WEB501** → sucesso (ocupação: 1/2).
-9. Tentar remover **Fernanda Costa** ou **WEB501** → erro de integridade (bloqueado por possuir matrículas ativas).
-10. Cancelar a matrícula de **Fernanda Costa** em **WEB501** e clicar em **- Remover Aluno** e **- Remover Disciplina** (com diálogo de confirmação) → ambos são removidos com sucesso.
-11. Fechar e reabrir o programa → todos os dados, novos cadastros e remoções persistem nos arquivos CSV.
+7. Clicar em **+ Novo Aluno** (RA: `2024006`, Nome: `Fernanda Costa`) e em **+ Nova Disciplina** (Código: `WEB501`, Nome: `Desenvolvimento Web`, Limite: digitar texto ou `0` para ver o diálogo de aviso com reabertura de entrada, depois digitar `2`) → ambos aparecem de imediato nos combos e na tabela de ocupação.
+8. Selecionar **Diego Rocha** e clicar em **\* Editar Aluno** → alterar nome para `Diego R. Rocha` (atualização imediata no combo e preservação das matrículas).
+9. Selecionar **ED301** e clicar em **\* Editar Disciplina** → alterar limite de 20 para 25 (atualização na tabela).
+10. Selecionar **LAB401** (2/2) e clicar em **\* Editar Disciplina** → tentar reduzir limite para 1 (bloqueado com aviso de vagas ocupadas).
+11. Selecionar **Fernanda Costa** e matriculá-la em **WEB501** → sucesso (ocupação: 1/2).
+12. Tentar remover **Fernanda Costa** ou **WEB501** → erro de integridade (bloqueado por possuir matrículas ativas).
+13. Cancelar a matrícula de **Fernanda Costa** em **WEB501** e clicar em **- Remover Aluno** e **- Remover Disciplina** (com diálogo de confirmação) → ambos são removidos com sucesso.
+14. Fechar e reabrir o programa → todos os dados, novos cadastros, edições e remoções persistem nos arquivos CSV.
 
 ---
 
 ## 📊 Análise de Resultados (para o relatório)
 
-Execute `java -cp bin app.CasosDeTesteRunner`. A execução dos 15 casos de teste automatizados produz:
+Execute `java -cp bin app.CasosDeTesteRunner`. A execução dos 17 casos de teste automatizados produz:
 
 1. Um **bloco detalhado** por caso de teste (entrada, resultado esperado, resultado obtido, estado após a operação);
 2. Uma **tabela em Markdown** pronta para ser copiada para a seção *Análise de Resultados* do relatório.

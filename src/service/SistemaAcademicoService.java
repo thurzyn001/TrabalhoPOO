@@ -151,6 +151,66 @@ public final class SistemaAcademicoService {
     }
 
     /**
+     * Edita os dados cadastrais de um aluno existente (apenas o nome; o RA é a identidade imutável).
+     *
+     * @param ra o Registro Acadêmico do aluno a ser editado
+     * @param novoNome o novo nome completo do aluno
+     * @return o aluno atualizado
+     * @throws MatriculaException se os parâmetros forem vazios ou o aluno não for encontrado
+     */
+    public Aluno editarAluno(String ra, String novoNome) throws MatriculaException {
+        // [REGRA DE NEGÓCIO] Validação de campos obrigatórios
+        if (ra == null || ra.isBlank()) {
+            throw new MatriculaException("O RA do aluno não pode ser nulo ou vazio.");
+        }
+        if (novoNome == null || novoNome.isBlank()) {
+            throw new MatriculaException("O nome do aluno não pode ser nulo ou vazio.");
+        }
+
+        Aluno aluno = buscarAluno(ra);
+        // [ENCAPSULAMENTO] Atualiza o estado via método de negócio do modelo
+        aluno.alterarNome(novoNome);
+        persistirAlunos();
+        return aluno;
+    }
+
+    /**
+     * Edita os dados de uma disciplina existente (nome e limite de vagas).
+     *
+     * @param codigo o código da disciplina a ser editada
+     * @param novoNome o novo nome da disciplina
+     * @param novoLimiteVagas o novo limite total de vagas
+     * @return a disciplina atualizada
+     * @throws MatriculaException se os dados forem inválidos, inexistente ou se novoLimite < vagasOcupadas
+     */
+    public Disciplina editarDisciplina(String codigo, String novoNome, int novoLimiteVagas) throws MatriculaException {
+        // [REGRA DE NEGÓCIO] Ordem de validação das entradas
+        if (codigo == null || codigo.isBlank()) {
+            throw new MatriculaException("O código da disciplina não pode ser nulo ou vazio.");
+        }
+        if (novoNome == null || novoNome.isBlank()) {
+            throw new MatriculaException("O nome da disciplina não pode ser nulo ou vazio.");
+        }
+        if (novoLimiteVagas <= 0) {
+            throw new MatriculaException("O limite de vagas deve ser maior que zero.");
+        }
+
+        Disciplina disciplina = buscarDisciplina(codigo);
+
+        // [CONSISTÊNCIA] I3: Impede redução da capacidade abaixo da quantidade de alunos já matriculados
+        if (novoLimiteVagas < disciplina.getVagasOcupadas()) {
+            throw new MatriculaException("O novo limite de vagas (" + novoLimiteVagas
+                    + ") não pode ser menor que o total de vagas já ocupadas (" + disciplina.getVagasOcupadas() + ").");
+        }
+
+        // [ENCAPSULAMENTO] Atualiza o modelo de forma atômica após todas as checagens
+        disciplina.alterarNome(novoNome);
+        disciplina.alterarLimiteVagas(novoLimiteVagas);
+        persistirDisciplinas();
+        return disciplina;
+    }
+
+    /**
      * Remove um aluno do sistema, desde que ele não possua nenhuma matrícula ativa.
      *
      * @param ra o RA do aluno a ser removido

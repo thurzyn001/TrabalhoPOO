@@ -14,10 +14,10 @@ import java.util.Objects;
  */
 public final class Disciplina {
 
-    // [ENCAPSULAMENTO] Atributos protegidos; vagasOcupadas não possui setter público
+    // [ENCAPSULAMENTO] Atributos protegidos; código e matriculas imutáveis; nome e limiteVagas alteráveis via métodos de negócio
     private final String codigo;
-    private final String nome;
-    private final int limiteVagas;
+    private String nome;
+    private int limiteVagas;
     private int vagasOcupadas;
     private final List<Matricula> matriculas;
 
@@ -65,12 +65,47 @@ public final class Disciplina {
     }
 
     /**
+     * Altera o nome da disciplina.
+     * Método com semântica de negócio para atualização cadastral da disciplina.
+     *
+     * @param novoNome o novo nome descritivo da disciplina (não nulo e não em branco)
+     * @throws IllegalArgumentException se o novo nome for nulo ou vazio
+     */
+    public void alterarNome(String novoNome) {
+        if (novoNome == null || novoNome.isBlank()) {
+            throw new IllegalArgumentException("Nome da disciplina não pode ser nulo ou vazio.");
+        }
+        // [ENCAPSULAMENTO] Atualização segura do atributo descritivo
+        this.nome = novoNome.trim();
+    }
+
+    /**
      * Obtém o limite total de vagas oferecidas pela disciplina.
      *
      * @return o limite de vagas
      */
     public int getLimiteVagas() {
         return limiteVagas;
+    }
+
+    /**
+     * Altera o limite total de vagas oferecidas pela disciplina.
+     * Método com semântica de negócio para redefinição de capacidade da turma.
+     *
+     * @param novoLimite o novo limite de vagas (deve ser maior que zero e >= vagasOcupadas)
+     * @throws IllegalArgumentException se o novo limite for menor ou igual a zero
+     * @throws IllegalStateException se o novo limite for menor que as vagas já ocupadas (defesa da invariante I3)
+     */
+    public void alterarLimiteVagas(int novoLimite) {
+        if (novoLimite <= 0) {
+            throw new IllegalArgumentException("Limite de vagas deve ser maior que zero.");
+        }
+        // [CONSISTÊNCIA] I3: Defesa interna de último nível que impede redução abaixo do número de matriculados
+        if (novoLimite < vagasOcupadas) {
+            throw new IllegalStateException("O novo limite de vagas (" + novoLimite 
+                    + ") não pode ser menor que o total de vagas já ocupadas (" + vagasOcupadas + ").");
+        }
+        this.limiteVagas = novoLimite;
     }
 
     /**

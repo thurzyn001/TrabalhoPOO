@@ -443,6 +443,70 @@ public final class CasosDeTesteRunner {
                     verificarInvariantes(service);
                 });
 
+        // CT16
+        executarCaso("CT16", "Edição de aluno e persistência",
+                "Edição de aluno e persistência",
+                () -> {
+                    registrar("Entrada", "Editar nome de Diego Rocha (2024004) para \"Diego R. Rocha\", validar tentativa com nome em branco (MatriculaException), recarregar novo repositório + service no mesmo diretório temporário");
+                    registrar("Esperado", "Nome atualizado para \"Diego R. Rocha\" em memória e no CSV; matrículas ativas (#7 e #8) continuam intactas; tentativa com nome em branco bloqueada; invariantes I1-I4 OK");
+
+                    // 1. Validar bloqueio de nome em branco
+                    MatriculaException exNomeVazio = esperarExcecao(() -> service.editarAluno("2024004", "   "));
+                    verificar(exNomeVazio.getMessage().equals("O nome do aluno não pode ser nulo ou vazio."),
+                            "Mensagem inesperada para nome em branco: " + exNomeVazio.getMessage());
+
+                    // 2. Realizar edição válida
+                    Aluno diego = service.editarAluno("2024004", "Diego R. Rocha");
+                    verificar(diego.getNome().equals("Diego R. Rocha"), "Nome em memória não foi atualizado");
+                    verificar(diego.getDisciplinasAtivas().size() == 2, "Vínculos de disciplinas ativas foram corrompidos");
+
+                    // 3. Recarregar do disco e conferir se persistiu no alunos.csv
+                    service = new SistemaAcademicoService(new ArquivoRepository(tempDir));
+                    service.carregarDados();
+
+                    Aluno diegoRecarregado = buscarAluno("2024004");
+                    verificar(diegoRecarregado.getNome().equals("Diego R. Rocha"), "Nome no CSV recarregado não confere");
+                    verificar(diegoRecarregado.getDisciplinasAtivas().size() == 2, "Vínculos pós-recarga corrompidos");
+
+                    registrar("Obtido", "Nome atualizado para \"Diego R. Rocha\" e persistido no CSV; validação de campos vazios OK; vínculos mantidos");
+                    registrar("Estado", "invariantes I1-I4 OK");
+                    verificarInvariantes(service);
+                });
+
+        // CT17
+        executarCaso("CT17", "Edição de disciplina, expansão e bloqueio de redução abaixo da ocupação",
+                "Edição de disciplina, expansão e bloqueio de redução abaixo da ocupação",
+                () -> {
+                    registrar("Entrada", "Editar nome de ED301 para \"Estruturas de Dados Avançadas\" e limite para 25 (sucesso); tentar reduzir limite de LAB401 (2/2) para 1 (MatriculaException); recarregar novo repositório + service");
+                    registrar("Esperado", "ED301 atualizado com novo nome e limite 2/25; LAB401 mantém limite 2/2; após recarga dos CSVs, alterações persistidas; invariantes I1-I4 OK");
+
+                    // 1. Tentar reduzir limite de LAB401 (ocupação 2) para 1 (deve falhar com MatriculaException)
+                    Disciplina lab = buscarDisciplina("LAB401");
+                    verificar(lab.getVagasOcupadas() == 2, "LAB401 deveria estar com 2 vagas ocupadas");
+                    MatriculaException exLimite = esperarExcecao(() -> service.editarDisciplina("LAB401", "Laboratório Avançado", 1));
+                    String msgEsperada = "O novo limite de vagas (1) não pode ser menor que o total de vagas já ocupadas (2).";
+                    verificar(exLimite.getMessage().equals(msgEsperada), "Mensagem inesperada: " + exLimite.getMessage());
+                    verificar(lab.getLimiteVagas() == 2, "Limite de LAB401 não deveria ter sido alterado após exceção");
+
+                    // 2. Editar disciplina com expansão de limite (ED301 de 20 para 25) e alteração de nome
+                    Disciplina ed = service.editarDisciplina("ED301", "Estruturas de Dados Avançadas", 25);
+                    verificar(ed.getNome().equals("Estruturas de Dados Avançadas"), "Nome de ED301 não atualizado");
+                    verificar(ed.getLimiteVagas() == 25, "Limite de ED301 deveria ser 25");
+
+                    // 3. Recarregar do disco e conferir persistência
+                    service = new SistemaAcademicoService(new ArquivoRepository(tempDir));
+                    service.carregarDados();
+
+                    Disciplina edRecarregada = buscarDisciplina("ED301");
+                    verificar(edRecarregada.getNome().equals("Estruturas de Dados Avançadas"), "Nome persistido no CSV não confere");
+                    verificar(edRecarregada.getLimiteVagas() == 25, "Limite persistido no CSV não confere");
+                    verificar(edRecarregada.getVagasOcupadas() == 2, "Vagas ocupadas em ED301 deveriam continuar 2");
+
+                    registrar("Obtido", "ED301 atualizado para 25 vagas e persistido; bloqueio de redução abaixo da ocupação em LAB401 validado");
+                    registrar("Estado", "invariantes I1-I4 OK");
+                    verificarInvariantes(service);
+                });
+
         imprimirResumo();
         System.exit(reprovados == 0 ? 0 : 1);
     }

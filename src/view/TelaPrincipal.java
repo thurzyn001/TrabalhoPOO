@@ -89,8 +89,10 @@ public final class TelaPrincipal extends JFrame {
         JButton btnMatricular = new JButton("Matricular");
         JButton btnCancelar = new JButton("Cancelar matrícula");
         JButton btnNovoAluno = new JButton("+ Novo Aluno");
+        JButton btnEditarAluno = new JButton("* Editar Aluno");
         JButton btnRemoverAluno = new JButton("- Remover Aluno");
         JButton btnNovaDisciplina = new JButton("+ Nova Disciplina");
+        JButton btnEditarDisciplina = new JButton("* Editar Disciplina");
         JButton btnRemoverDisciplina = new JButton("- Remover Disciplina");
 
         JPanel linha1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
@@ -103,9 +105,11 @@ public final class TelaPrincipal extends JFrame {
 
         JPanel linha2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
         linha2.add(btnNovoAluno);
+        linha2.add(btnEditarAluno);
         linha2.add(btnRemoverAluno);
         linha2.add(new JLabel("  |  "));
         linha2.add(btnNovaDisciplina);
+        linha2.add(btnEditarDisciplina);
         linha2.add(btnRemoverDisciplina);
 
         painelSuperior.add(linha1);
@@ -158,8 +162,10 @@ public final class TelaPrincipal extends JFrame {
         btnMatricular.addActionListener(e -> aoMatricular());
         btnCancelar.addActionListener(e -> aoCancelar());
         btnNovoAluno.addActionListener(e -> aoNovoAluno());
+        btnEditarAluno.addActionListener(e -> aoEditarAluno());
         btnRemoverAluno.addActionListener(e -> aoRemoverAluno());
         btnNovaDisciplina.addActionListener(e -> aoNovaDisciplina());
+        btnEditarDisciplina.addActionListener(e -> aoEditarDisciplina());
         btnRemoverDisciplina.addActionListener(e -> aoRemoverDisciplina());
     }
 
@@ -211,21 +217,19 @@ public final class TelaPrincipal extends JFrame {
      * Coleta os dados para cadastro de um novo aluno e solicita ao serviço a inclusão.
      */
     private void aoNovoAluno() {
-        String ra = JOptionPane.showInputDialog(
-                this,
-                "Informe o RA do aluno:",
+        String ra = pedirTexto(
                 "Cadastrar Novo Aluno",
-                JOptionPane.QUESTION_MESSAGE
+                "Informe o RA do aluno:",
+                null
         );
         if (ra == null) {
             return; // Usuário cancelou
         }
 
-        String nome = JOptionPane.showInputDialog(
-                this,
-                "Informe o Nome do aluno:",
+        String nome = pedirTexto(
                 "Cadastrar Novo Aluno",
-                JOptionPane.QUESTION_MESSAGE
+                "Informe o Nome do aluno:",
+                null
         );
         if (nome == null) {
             return; // Usuário cancelou
@@ -233,7 +237,7 @@ public final class TelaPrincipal extends JFrame {
 
         try {
             // [CAMADAS] Delega o cadastro e a persistência do aluno para o serviço
-            Aluno novoAluno = service.cadastrarAluno(ra.trim(), nome.trim());
+            Aluno novoAluno = service.cadastrarAluno(ra, nome);
             mostrarSucesso("Aluno cadastrado com sucesso: " + novoAluno.getNome());
             atualizarTela();
             comboAlunos.setSelectedItem(novoAluno);
@@ -243,55 +247,195 @@ public final class TelaPrincipal extends JFrame {
     }
 
     /**
+     * Coleta o novo nome para o aluno atualmente selecionado e solicita a alteração ao serviço.
+     */
+    private void aoEditarAluno() {
+        Aluno aluno = (Aluno) comboAlunos.getSelectedItem();
+        if (aluno == null) {
+            mostrarErro("Selecione um aluno para editar.");
+            return;
+        }
+
+        String novoNome = pedirTexto(
+                "Editar Aluno",
+                "Informe o novo nome para o aluno (RA: " + aluno.getRa() + "):",
+                aluno.getNome()
+        );
+        if (novoNome == null) {
+            return; // Usuário cancelou
+        }
+
+        try {
+            // [CAMADAS] Delega a edição e persistência do aluno para o serviço
+            service.editarAluno(aluno.getRa(), novoNome);
+            mostrarSucesso("Dados do aluno " + aluno.getRa() + " atualizados com sucesso.");
+            atualizarTela();
+        } catch (MatriculaException ex) {
+            mostrarErro(ex.getMessage());
+        }
+    }
+
+    /**
      * Coleta os dados para cadastro de uma nova disciplina e solicita ao serviço a inclusão.
      */
     private void aoNovaDisciplina() {
-        String codigo = JOptionPane.showInputDialog(
-                this,
-                "Informe o código da disciplina (ex: WEB501):",
+        String codigo = pedirTexto(
                 "Cadastrar Nova Disciplina",
-                JOptionPane.QUESTION_MESSAGE
+                "Informe o código da disciplina (ex: WEB501):",
+                null
         );
         if (codigo == null) {
             return; // Usuário cancelou
         }
 
-        String nome = JOptionPane.showInputDialog(
-                this,
-                "Informe o nome da disciplina:",
+        String nome = pedirTexto(
                 "Cadastrar Nova Disciplina",
-                JOptionPane.QUESTION_MESSAGE
+                "Informe o nome da disciplina:",
+                null
         );
         if (nome == null) {
             return; // Usuário cancelou
         }
 
-        String limiteStr = JOptionPane.showInputDialog(
-                this,
-                "Informe o limite de vagas (número inteiro positivo):",
+        Integer limiteVagas = pedirInteiro(
                 "Cadastrar Nova Disciplina",
-                JOptionPane.QUESTION_MESSAGE
+                "Informe o limite de vagas (número inteiro positivo):",
+                null
         );
-        if (limiteStr == null) {
+        if (limiteVagas == null) {
             return; // Usuário cancelou
-        }
-
-        int limiteVagas;
-        try {
-            limiteVagas = Integer.parseInt(limiteStr.trim());
-        } catch (NumberFormatException e) {
-            mostrarErro("O limite de vagas deve ser um número inteiro válido.");
-            return;
         }
 
         try {
             // [CAMADAS] Delega o cadastro e a persistência da disciplina para o serviço
-            Disciplina novaDisciplina = service.cadastrarDisciplina(codigo.trim(), nome.trim(), limiteVagas);
+            Disciplina novaDisciplina = service.cadastrarDisciplina(codigo, nome, limiteVagas);
             mostrarSucesso("Disciplina cadastrada com sucesso: " + novaDisciplina.getCodigo());
             atualizarTela();
             comboDisciplinas.setSelectedItem(novaDisciplina);
         } catch (MatriculaException ex) {
             mostrarErro(ex.getMessage());
+        }
+    }
+
+    /**
+     * Coleta o novo nome e novo limite de vagas para a disciplina selecionada e solicita a alteração ao serviço.
+     */
+    private void aoEditarDisciplina() {
+        Disciplina disciplina = (Disciplina) comboDisciplinas.getSelectedItem();
+        if (disciplina == null) {
+            mostrarErro("Selecione uma disciplina para editar.");
+            return;
+        }
+
+        String novoNome = pedirTexto(
+                "Editar Disciplina",
+                "Informe o novo nome para a disciplina (" + disciplina.getCodigo() + "):",
+                disciplina.getNome()
+        );
+        if (novoNome == null) {
+            return; // Usuário cancelou
+        }
+
+        Integer novoLimite = pedirInteiro(
+                "Editar Disciplina",
+                "Informe o novo limite de vagas para a disciplina (mínimo atual ocupado: " + disciplina.getVagasOcupadas() + "):",
+                String.valueOf(disciplina.getLimiteVagas())
+        );
+        if (novoLimite == null) {
+            return; // Usuário cancelou
+        }
+
+        try {
+            // [CAMADAS] Delega a edição e persistência da disciplina para o serviço
+            service.editarDisciplina(disciplina.getCodigo(), novoNome, novoLimite);
+            mostrarSucesso("Dados da disciplina " + disciplina.getCodigo() + " atualizados com sucesso.");
+            atualizarTela();
+        } catch (MatriculaException ex) {
+            mostrarErro(ex.getMessage());
+        }
+    }
+
+    /**
+     * Solicita um texto ao usuário em laço de repetição,
+     * impedindo o cancelamento abrupto da operação por entrada em branco ou acidental.
+     *
+     * @param titulo o título da janela de diálogo
+     * @param mensagem a orientação descritiva do campo
+     * @param valorInicial valor sugerido/atual pré-preenchido (ou null)
+     * @return o texto válido informado (com espaços podados), ou {@code null} se o usuário cancelar
+     */
+    private String pedirTexto(String titulo, String mensagem, String valorInicial) {
+        String valorAtual = valorInicial != null ? valorInicial : "";
+        while (true) {
+            String entrada = (String) JOptionPane.showInputDialog(
+                    this,
+                    mensagem,
+                    titulo,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    null,
+                    valorAtual
+            );
+            if (entrada == null) {
+                return null; // Usuário cancelou ou fechou a janela
+            }
+            if (!entrada.isBlank()) {
+                return entrada.trim();
+            }
+            JOptionPane.showMessageDialog(
+                    this,
+                    "O campo não pode ser deixado em branco. Por favor, informe um valor válido.",
+                    "Aviso — Entrada Obrigatória",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            valorAtual = entrada;
+        }
+    }
+
+    /**
+     * Solicita um número inteiro positivo ao usuário em laço de repetição,
+     * impedindo o cancelamento abrupto da operação caso o usuário digite texto ou valor menor/igual a zero.
+     *
+     * @param titulo o título da janela de diálogo
+     * @param mensagem a orientação descritiva do campo
+     * @param valorInicial valor sugerido/atual pré-preenchido (ou null)
+     * @return o número inteiro positivo informado, ou {@code null} se o usuário cancelar
+     */
+    private Integer pedirInteiro(String titulo, String mensagem, String valorInicial) {
+        String valorAtual = valorInicial != null ? valorInicial : "";
+        while (true) {
+            String entrada = (String) JOptionPane.showInputDialog(
+                    this,
+                    mensagem,
+                    titulo,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    null,
+                    valorAtual
+            );
+            if (entrada == null) {
+                return null; // Usuário cancelou ou fechou a janela
+            }
+            try {
+                int valor = Integer.parseInt(entrada.trim());
+                if (valor > 0) {
+                    return valor;
+                }
+                JOptionPane.showMessageDialog(
+                        this,
+                        "O valor deve ser um número inteiro maior que zero.",
+                        "Aviso — Valor Inválido",
+                        JOptionPane.WARNING_MESSAGE
+                );
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Valor inválido: \"" + entrada + "\". Por favor, digite apenas números inteiros positivos.",
+                        "Aviso — Número Inválido",
+                        JOptionPane.WARNING_MESSAGE
+                );
+            }
+            valorAtual = entrada;
         }
     }
 
